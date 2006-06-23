@@ -1,0 +1,114 @@
+acts_as_rateable Rails Plugin
+
+RubyForge Project Page: http://rubyforge.org/projects/rateableplugin/
+
+Any questions/comments can be addressed to Chris Ingrassia <chris@fortiusone.com> 
+
+Adds the ability to rate/rank arbitrary ActiveRecord model objects
+
+Please see "MIT-LICENSE" in the top level directory of this distribution and the notices in the
+source files for distribution and copyright information.
+
+INSTALLATION
+============
+
+To install, simply run:
+
+script/plugin install -x svn://rubyforge.org/var/svn/rateableplugin
+
+(remove the '-x' if you don't want to set an svn:externals property in your rails application)
+
+You'll then need to make the ratings table.  You should probably make a migration to do so, which
+you can do with the following command:
+
+script/generate migration add_ratings
+
+Then edit the resulting migration source that it puts in db/migrate (it will be named something
+like 015_add_ratings.rb, the number at the beginning of the filename will probably be different
+in your instance).
+
+The table needed by the plugin needs to be named "ratings" and have three columns in addition
+to the primary key.
+
+They are:
+
+rating	integer
+rateable_id	integer
+rateable_type string
+
+You can do this in your migration with the following code:
+
+def self.up
+	create_table :ratings do |t|
+		t.column :rating, :integer	# You can add a default value here if you wish
+		t.column :rateable_id :integer, :null => false
+		t.column :rateable_type, :string, :null => false
+	end
+	add_index :ratings, [:rateable_id, :rating]	# Not required, but should help more than it hurts
+end
+
+def self.down
+	drop_table :ratings
+end
+
+After saving the migration run the following from the top-level directory of your rails application:
+$ rake migrate
+
+After that, you should have everything you need setup and ready to go.
+
+It probably wouldn't hurt to run through the included unit tests quickly, but you don't have to:
+
+$ rake test:plugins
+
+USING THE PLUGIN
+================
+
+Pretty simple, really.  You just need to add "acts_as_rateable" at the top of your ActiveRecord model,
+and everything should magically become available to you :)
+
+	The Basics:
+	===========
+	Any model that acts_as_rateable has the following methods available to it:
+	(see also the rdoc for FortiusOne::Acts::Rateable::ClassMethods#acts_as_rateable)
+	
+	rate(a_rating) : Rate the object with a_rating (integer)
+	rating= : Alias for rate
+	rating : Return the object's rating
+	find_all_by_rating : Find all objects matching the rating criteria
+	find_by_rating : Find the first object matching the rating criteria
+
+	You can specify ratings as single integers, a list of integers, a range (setting one end of
+	the range to "-1" will match all lower or higher values, depending on which end of the range
+	it's on), or a mix of ranges and integers in a list (see examples below)
+	
+	Example:
+	========
+	
+	class SillyWalk < ActiveRecord::Base
+		# attributes: name, inventor
+		acts_as_rateable
+	end
+	
+	SillyWalk.new(:name => "Not Very Silly", :inventor => "Mr. Pudey").save
+	SillyWalk.new(:name => "A Bit Silly", :inventor => "Mrs. Two-Lumps", :rating => 3).save
+	SillyWalk.new(:name => "Quite Silly", :inventor => "Mr. Teabag", :rating => 5).save
+	# To update the rating after creation of the initial record...
+	SillyWalk.find_by_name("Not Very Silly").rate(1)
+	# You could also do this
+	SillyWalk.find_by_name("Not Very Silly").rating = 1
+	# Retreive the rating
+	SillyWalk.find_by_name("Not Very Silly").rating # => 1
+	
+	# Find silly walks with a rating of at least 3
+	SillyWalk.find_all_by_rating(3..-1) # => ["A Bit Silly", "Quite Silly"]
+	# Find silly walks with a rating of 5 (only)
+	SillyWalk.find_all_by_rating(5) # => ["Quite Silly"]
+	# Find silly walks with a rating of 1 or 5
+	SillyWalk.find_all_by_rating([1,5]) # => ["Not Very Silly", "Quite Silly"]
+	# Find silly walks with a rating between 3 and 5, inclusive
+	SillyWalk.find_all_by_rating(3..5) # => ["A Bit Silly", "Quite Silly"]
+	# You can also mix specific ratings and ranges...
+	SillyWalk.find_all_by_rating([1,3..5]) # => ["Not Very Silly", "A Bit Silly", "Quite Silly"]
+
+
+	
