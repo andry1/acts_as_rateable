@@ -14,9 +14,7 @@ INSTALLATION
 
 To install, simply run:
 
-script/plugin install -x svn://rubyforge.org/var/svn/rateableplugin
-
-(remove the '-x' if you don't want to set an svn:externals property in your rails application)
+script/plugin install svn://rubyforge.org/var/svn/rateableplugin/trunk
 
 You'll then need to make the ratings table.  You should probably make a migration to do so, which
 you can do with the following command:
