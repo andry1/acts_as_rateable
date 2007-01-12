@@ -27,16 +27,25 @@ module FortiusOne #:nodoc:
     acts_as_rateable
   end
   
+  class AverageRatedThing < ActiveRecord::Base #:nodoc:
+    acts_as_rateable :average => true
+  end
+  
   class ActsAsRateableTest < Test::Unit::TestCase #:nodoc:
       def setup  
         ActiveRecord::Schema.define do
-          create_table :ratings, :force => true do |t|
-            t.column :rateable_id, :integer, :null => false
-            t.column :rateable_type, :string, :null => false
-            t.column :rating, :integer, :null => false
-          end
+          # create_table :ratings, :force => true do |t|
+          #   t.column :rateable_id, :integer, :null => false
+          #   t.column :rateable_type, :string, :null => false
+          #   t.column :rating, :integer, :null => false
+          #   t.column :total, :integer, :default => 0
+          # end
         
           create_table :rated_things, :force => true do |t|
+            t.column :name, :string
+          end
+          
+          create_table :average_rated_things, :force => true do |t|
             t.column :name, :string
           end
         end
@@ -47,13 +56,13 @@ module FortiusOne #:nodoc:
         RatedThing.new(:name => "Take it or leave it", :rating => 3).save
         RatedThing.new(:name => "Don't like this thing very much", :rating => 2).save
         RatedThing.new(:name => "My Least Favorite", :rating => 1).save
+        
       end
     
       def teardown
-        ActiveRecord::Schema.define do
-          drop_table :rated_things
-          drop_table :ratings
-        end
+        Rating.delete_all
+        RatedThing.delete_all
+        AverageRatedThing.delete_all
       end
     
       def test_has_rateable_included
@@ -106,9 +115,9 @@ module FortiusOne #:nodoc:
         assert_equal "My Favorite", thing.name
         thing.rate(4)
         thing = RatedThing.find_by_rating(5)
-        assert thing.nil?
+        assert thing.nil?, thing.inspect
         things = RatedThing.find_all_by_rating(4)
-        assert_equal 3, things.length
+        assert_equal 3, things.length, RatedThing.find_by_name("My Favorite", :include => :rating).inspect
         names = things.collect {|thing| thing.name}
         assert names.include?("My Favorite")
       end
@@ -123,6 +132,21 @@ module FortiusOne #:nodoc:
       def test_find_by_range
         things = RatedThing.find_all_by_rating(1..3)
         is_things_one_to_three?(things)
+      end
+      
+      def test_average_rating
+        art = AverageRatedThing.create(:name => "Average Thing", :rating => 1)
+        total_rating = 1
+        total_times = 1
+        assert_equal 1, art.rating
+        assert_equal 1, art.total_ratings
+        5.times do |i|
+          total_rating += 5
+          total_times += 1
+          art.rating = 5
+          assert_equal (total_rating/total_times).to_i, art.rating
+          assert_equal total_times, art.total_ratings
+        end
       end
       
       private

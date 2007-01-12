@@ -34,6 +34,10 @@ module FortiusOne #:nodoc:
       end
     
       module ClassMethods
+        def average_rating?
+          self.respond_to?("ratings")
+        end
+        
         # Adds ratings functionality to an ActiveRecord model
         #
         # The following methods are added and available to the model
@@ -48,27 +52,62 @@ module FortiusOne #:nodoc:
         #
         # find_by_rating : Find the first object matching the rating criteria
         #
-        def acts_as_rateable
+        def acts_as_rateable(opts={})
+          options = options_for_rateable(opts)
+          extend FortiusOne::Acts::Rateable::SingletonMethods
+          include FortiusOne::Acts::Rateable::InstanceMethods
+          
+          if opts[:average] == true
+            has_many :ratings, :dependent => :destroy, :as => :rateable, :foreign_key => :rateable_id
+          else
+            has_one :rating, :dependent => :destroy, :as => :rateable, :foreign_key => :rateable_id            
+            class_eval { alias :old_rating :rating  }
+          
+          end
+          
           class_eval do
-            extend FortiusOne::Acts::Rateable::SingletonMethods
-            has_one :rating, :dependent => :destroy, :as => :rateable, :foreign_key => :rateable_id
             
             # Rate this object with a_rating, also aliased as rating=
             def rate(a_rating)
-              create_rating(:rating => a_rating.to_i)
+              if average_rating?
+                self.ratings.create(:rating => a_rating.to_i)
+              else
+                self.rating.nil? ? create_rating(:rating => a_rating.to_i) : self.old_rating.update_attribute(:rating, a_rating.to_i)
+              end
             end
             # alias for rate
             alias :rating= :rate
 
-            alias :old_rating :rating #:nodoc:
             # Return the rating of this object
             def rating
-              return nil if self.old_rating.nil?
-              self.old_rating.rating
-            end            
+              if average_rating?
+                # Integerize it for now -- no fractional average ratings
+                ratings.average(:rating).to_i
+              else
+                self.old_rating.nil? ? nil : self.old_rating.rating
+              end
+            end
+            
+            def total_ratings
+              average_rating? ? ratings.count : 1
+            end
+            
+            def average_rating?
+              self.respond_to?("ratings")
+            end
+                            
           end
-          include FortiusOne::Acts::Rateable::InstanceMethods
         end
+                
+        private
+
+        def options_for_rateable(opts={})
+          {
+            :limit => -1,
+            :average => false
+          }.merge(opts)
+        end
+        
       end
       
       module SingletonMethods
@@ -108,8 +147,7 @@ module FortiusOne #:nodoc:
         # Find the first object matching the conditions specified
         def find_by_rating(ratings, options={})
           find_all_by_rating(ratings, options.update(:limit => 1)).first || nil
-        end
-      
+        end      
       
       end
       
