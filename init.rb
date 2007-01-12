@@ -20,3 +20,6 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 require 'acts_as_rateable'
+require 'rateable_helper'
+
+ActionView::Base.send :include, FortiusOne::Rateable::Helper
