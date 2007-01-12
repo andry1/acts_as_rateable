@@ -60,7 +60,7 @@ module FortiusOne #:nodoc:
          :filled_star => "*",
          :empty_star => "",
          :filled_class => "star_filled",
-         :empty_class => "star_empty"}
+         :empty_class => "star_empty"}.merge(opts)
       end
       
     end
