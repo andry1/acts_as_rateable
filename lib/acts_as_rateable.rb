@@ -82,7 +82,7 @@ module FortiusOne #:nodoc:
             def rating
               if average_rating?
                 # Integerize it for now -- no fractional average ratings
-                ratings.average(:rating).to_i
+                ratings.average(:rating).round
               else
                 self.old_rating.nil? ? nil : self.old_rating.rating
               end
